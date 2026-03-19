@@ -24,7 +24,9 @@ class OrderResponse(BaseModel):
     client_name: str = Field(..., description="Client name")
     items: List[OrderItem] = Field(..., min_items=1, description="Order items")
     total_amount: float = Field(..., ge=0, description="Total order amount")
-    status: str = Field(..., description="Order status: draft, confirmed, in_delivery, closed, cancelled")
+    status: str = Field(
+        ..., description="Order status: draft, confirmed, in_delivery, closed, cancelled"
+    )
     delivery_date: datetime = Field(..., description="Delivery date")
     route_id: Optional[int] = Field(None, description="Assigned route ID")
     created_at: datetime = Field(..., description="Creation timestamp")
