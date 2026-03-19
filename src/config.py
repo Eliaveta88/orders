@@ -16,6 +16,10 @@ class RedisCfg(CfgBase):
     db: int = int(os.getenv("REDIS_DB", "0"))
     password: str = os.getenv("REDIS_PASSWORD", "")
     decode_responses: bool = True
+    socket_timeout_seconds: float = float(os.getenv("REDIS_SOCKET_TIMEOUT_SECONDS", "3"))
+    socket_connect_timeout_seconds: float = float(os.getenv("REDIS_CONNECT_TIMEOUT_SECONDS", "3"))
+    health_check_interval_seconds: int = int(os.getenv("REDIS_HEALTH_CHECK_INTERVAL_SECONDS", "30"))
+    max_connections: int = int(os.getenv("REDIS_MAX_CONNECTIONS", "100"))
 
     @property
     def url(self) -> str:
