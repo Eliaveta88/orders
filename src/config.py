@@ -10,6 +10,7 @@ class CfgBase(ABC):
 @dataclass
 class RedisCfg(CfgBase):
     """Redis configuration for order state caching and real-time updates."""
+
     host: str = os.getenv("REDIS_HOST", "localhost")
     port: int = int(os.getenv("REDIS_PORT", "6379"))
     db: int = int(os.getenv("REDIS_DB", "0"))
@@ -25,6 +26,7 @@ class RedisCfg(CfgBase):
 @dataclass
 class PostgresCfg(CfgBase):
     """PostgreSQL configuration for orders service."""
+
     host: str = os.getenv("POSTGRES_HOST", "localhost")
     port: int = os.getenv("POSTGRES_PORT", "5432")
     user: str = os.getenv("POSTGRES_USER", "user")
