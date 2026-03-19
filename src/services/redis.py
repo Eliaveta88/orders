@@ -23,12 +23,13 @@ async def get_redis() -> aioredis.Redis:
     """Return the shared async Redis connection (lazy-init)."""
     global _pool
     if _pool is None:
-        _pool = aioredis.Redis(
-            host=redis_cfg.host,
-            port=redis_cfg.port,
-            db=redis_cfg.db,
-            password=redis_cfg.password or None,
+        _pool = aioredis.from_url(
+            redis_cfg.url,
             decode_responses=redis_cfg.decode_responses,
+            socket_timeout=redis_cfg.socket_timeout_seconds,
+            socket_connect_timeout=redis_cfg.socket_connect_timeout_seconds,
+            health_check_interval=redis_cfg.health_check_interval_seconds,
+            max_connections=redis_cfg.max_connections,
         )
     return _pool
 
