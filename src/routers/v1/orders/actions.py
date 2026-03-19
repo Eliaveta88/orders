@@ -1,5 +1,7 @@
 """Business logic actions for orders endpoints."""
 
+import logging
+
 from fastapi import HTTPException, status
 
 from src.routers.v1.orders.dal import OrderDAL
@@ -9,6 +11,16 @@ from src.routers.v1.orders.schemas import (
     CreateOrderRequest,
     UpdateOrderStatusRequest,
 )
+from src.services.redis import (
+    cache_order,
+    get_cached_order,
+    invalidate_order,
+    publish_order_event,
+    set_order_status,
+)
+
+
+logger = logging.getLogger(__name__)
 
 
 async def _list_orders(
@@ -32,12 +44,26 @@ async def _get_order_detail(
     dal: OrderDAL,
 ) -> OrderResponse:
     """Get order details."""
+    try:
+        cached = await get_cached_order(order_id)
+        if cached:
+            logger.info("orders.cache_hit", extra={"order_id": order_id})
+            return OrderResponse(**cached)
+    except Exception:
+        logger.exception("orders.cache_read_failed", extra={"order_id": order_id})
+
     order = await dal.get_by_id(order_id)
     if not order:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Order not found",
         )
+
+    try:
+        await cache_order(order_id, order)
+    except Exception:
+        logger.exception("orders.cache_write_failed", extra={"order_id": order_id})
+
     return OrderResponse(**order)
 
 
@@ -47,6 +73,29 @@ async def _create_order(
 ) -> OrderResponse:
     """Create new order."""
     order = await dal.create(order_in)
+    order_id = order.get("id")
+    order_status = order.get("status")
+
+    if order_id is not None:
+        try:
+            await cache_order(order_id, order)
+            if order_status is not None:
+                await set_order_status(order_id, str(order_status))
+        except Exception:
+            logger.exception("orders.post_create_cache_failed", extra={"order_id": order_id})
+
+        try:
+            await publish_order_event(
+                {
+                    "order_id": order_id,
+                    "status": order_status,
+                    "source": "orders",
+                    "event_type": "order_created",
+                }
+            )
+        except Exception:
+            logger.exception("orders.publish_created_failed", extra={"order_id": order_id})
+
     return OrderResponse(**order)
 
 
@@ -62,4 +111,24 @@ async def _update_order_status(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Order not found",
         )
+
+    new_status = status_req.status
+    try:
+        await set_order_status(order_id, str(new_status))
+        await invalidate_order(order_id)
+    except Exception:
+        logger.exception("orders.post_status_update_cache_failed", extra={"order_id": order_id})
+
+    try:
+        await publish_order_event(
+            {
+                "order_id": order_id,
+                "status": new_status,
+                "source": "orders",
+                "event_type": "order_status_updated",
+            }
+        )
+    except Exception:
+        logger.exception("orders.publish_status_updated_failed", extra={"order_id": order_id})
+
     return OrderResponse(**order)
