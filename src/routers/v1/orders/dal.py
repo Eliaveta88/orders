@@ -1,7 +1,11 @@
 """Data Access Layer for orders operations."""
 
+from decimal import Decimal
+
+from sqlalchemy import select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.routers.v1.orders.models import Order, OrderItem, OrderStatusHistory
 from src.routers.v1.orders.schemas import CreateOrderRequest
 
 
@@ -13,62 +17,144 @@ class OrderDAL:
 
     async def list_orders(self, skip: int = 0, limit: int = 100) -> list[dict]:
         """List all orders with pagination."""
-        # TODO: Implement with ORM model
-        # stmt = (
-        #     select(Order)
-        #     .order_by(Order.created_at.desc())
-        #     .offset(skip)
-        #     .limit(limit)
-        # )
-        # result = await self.session.execute(stmt)
-        # orders = result.scalars().all()
-        # return [o.to_dict() for o in orders]
-        return []
+        stmt = (
+            select(Order)
+            .order_by(Order.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        orders = result.scalars().all()
+        return [o.to_dict() | {"id": o.id} for o in orders]
 
     async def count_orders(self) -> int:
         """Get total order count."""
-        # TODO: Implement with ORM model
-        # stmt = select(func.count(Order.id))
-        # result = await self.session.execute(stmt)
-        # return result.scalar() or 0
-        return 0
+        stmt = select(func.count(Order.id))
+        result = await self.session.execute(stmt)
+        return result.scalar() or 0
 
     async def get_by_id(self, order_id: int) -> dict | None:
         """Get order by ID."""
-        # TODO: Implement with ORM model
-        # stmt = select(Order).where(Order.id == order_id)
-        # result = await self.session.execute(stmt)
-        # order = result.scalar_one_or_none()
-        # return order.to_dict() if order else None
-        return None
+        stmt = select(Order).where(Order.id == order_id)
+        result = await self.session.execute(stmt)
+        order = result.scalar_one_or_none()
+
+        if not order:
+            return None
+
+        # 1. Get order items
+        items_stmt = select(OrderItem).where(OrderItem.order_id == order_id)
+        items_result = await self.session.execute(items_stmt)
+        items = items_result.scalars().all()
+
+        # 2. Build response
+        return {
+            "id": order.id,
+            "client_id": order.client_id,
+            "client_name": order.client_name,
+            "items": [
+                {
+                    "product_id": item.product_id,
+                    "product_name": item.product_name,
+                    "quantity": item.quantity,
+                    "unit_price": float(item.unit_price),
+                    "total": float(item.total),
+                }
+                for item in items
+            ],
+            "total_amount": float(order.total_amount),
+            "status": order.status,
+            "delivery_date": order.delivery_date,
+            "route_id": order.route_id,
+            "created_at": order.created_at,
+        }
 
     async def create(self, order_in: CreateOrderRequest) -> dict:
         """Create new order."""
-        # TODO: Implement order creation
-        # 1. Create Order record
-        # 2. Create OrderItem records for each item
-        # 3. Calculate total amount
-        # 4. Reserve stock (call warehouse service)
-        # 5. Return order details
+        # 1. Calculate total amount
+        total_amount = Decimal("0")
+        items_data = []
+
+        for item in order_in.items:
+            # TODO: Fetch product price from catalog service
+            unit_price = Decimal("100")  # Mock price
+            item_total = Decimal(item.quantity) * unit_price
+            total_amount += item_total
+            items_data.append((item, unit_price, item_total))
+
+        # 2. Create Order record
+        order = Order(
+            client_id=order_in.client_id,
+            client_name="Client Name",  # TODO: Fetch from clients
+            total_amount=total_amount,
+            status="draft",
+            delivery_date=order_in.delivery_date,
+            notes=order_in.notes,
+        )
+        self.session.add(order)
+        await self.session.flush()
+
+        # 3. Create OrderItem records for each item
+        for item_req, unit_price, item_total in items_data:
+            order_item = OrderItem(
+                order_id=order.id,
+                product_id=item_req.product_id,
+                product_name="Product Name",  # TODO: Fetch from catalog
+                quantity=item_req.quantity,
+                unit_price=unit_price,
+                total=item_total,
+                status="pending",
+            )
+            self.session.add(order_item)
+
+        await self.session.flush()
+
+        # 4. Return order details
         return {
-            "id": 1,
-            "client_id": order_in.client_id,
-            "client_name": "Client Name",  # TODO: Fetch from client table
-            "items": [],
-            "total_amount": 0.0,
+            "id": order.id,
+            "client_id": order.client_id,
+            "client_name": order.client_name,
+            "items": [
+                {
+                    "product_id": item.product_id,
+                    "product_name": item.product_name,
+                    "quantity": item.quantity,
+                    "unit_price": float(unit_price),
+                    "total": float(item_total),
+                }
+                for item, unit_price, item_total in items_data
+            ],
+            "total_amount": float(total_amount),
             "status": "draft",
-            "delivery_date": order_in.delivery_date,
+            "delivery_date": order.delivery_date,
             "route_id": None,
-            "created_at": "2026-03-19T10:00:00Z",
+            "created_at": order.created_at,
         }
 
     async def update_status(self, order_id: int, new_status: str) -> dict | None:
         """Update order status."""
-        # TODO: Implement status update with validations
         # 1. Find order
-        # 2. Validate status transition
-        # 3. Update status and timestamp
-        # 4. If confirmed: reserve stock
-        # 5. If in_delivery: send to logistics
-        # 6. Return updated order
-        return None
+        stmt = select(Order).where(Order.id == order_id)
+        result = await self.session.execute(stmt)
+        order = result.scalar_one_or_none()
+
+        if not order:
+            return None
+
+        # 2. Record status change in history
+        history = OrderStatusHistory(
+            order_id=order_id,
+            old_status=order.status,
+            new_status=new_status,
+            changed_by="system",
+        )
+        self.session.add(history)
+
+        # 3. Update status
+        await self.session.execute(
+            update(Order).where(Order.id == order_id).values(status=new_status)
+        )
+        await self.session.flush()
+
+        # 4. Return updated order
+        return await self.get_by_id(order_id)
