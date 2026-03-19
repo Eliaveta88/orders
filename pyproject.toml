@@ -1,0 +1,21 @@
+[project]
+name = "gastroroute_orders"
+version = "0.1.0"
+description = "GastroRoute orders service"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "pydantic-settings>=2.0.0",
+    "sqlalchemy[asyncio]>=2.0.0",
+    "asyncpg>=0.30.0",
+    "redis>=5.0.0",
+    "granian[asgi]>=0.7.0",
+    "pytz>=2024.1",
+    "alembic>=1.13.0",
+]
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[dependency-groups]
+dev = ["ruff>=0.8.0"]
