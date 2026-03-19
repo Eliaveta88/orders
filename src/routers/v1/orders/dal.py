@@ -17,12 +17,7 @@ class OrderDAL:
 
     async def list_orders(self, skip: int = 0, limit: int = 100) -> list[dict]:
         """List all orders with pagination."""
-        stmt = (
-            select(Order)
-            .order_by(Order.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-        )
+        stmt = select(Order).order_by(Order.created_at.desc()).offset(skip).limit(limit)
         result = await self.session.execute(stmt)
         orders = result.scalars().all()
         return [o.to_dict() | {"id": o.id} for o in orders]
