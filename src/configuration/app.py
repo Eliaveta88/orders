@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
@@ -7,12 +8,24 @@ from starlette.middleware.cors import CORSMiddleware
 
 from src.middleware import db_session_middleware
 from src.routers import Router
+from src.services.redis import close_redis, get_redis
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Starting up: connecting to Redis …")
+    await get_redis()
+    logger.info("Redis connected.")
+    yield
+    logger.info("Shutting down: closing Redis …")
+    await close_redis()
+    logger.info("Redis closed.")
 
 
 class App:
@@ -25,6 +38,7 @@ class App:
             redoc_url=None,
             openapi_url="/api/openapi.json",
             default_response_class=ORJSONResponse,
+            lifespan=lifespan,
         )
         self._app.add_middleware(
             middleware_class=CORSMiddleware,
