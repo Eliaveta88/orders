@@ -13,7 +13,7 @@ _ORDER_CACHE = f"{_KEY_PREFIX}:order:"
 _ORDER_STATUS = f"{_KEY_PREFIX}:status:"
 _CHANNEL_ORDER = f"{_KEY_PREFIX}:events:status"
 
-_ORDER_CACHE_TTL = 300   # 5 min
+_ORDER_CACHE_TTL = 300  # 5 min
 _STATUS_CACHE_TTL = 120  # 2 min
 
 _pool: aioredis.Redis | None = None
@@ -45,6 +45,7 @@ async def close_redis() -> None:
 # Order cache
 # ---------------------------------------------------------------------------
 
+
 async def cache_order(order_id: int, data: dict) -> None:
     """Cache full order data."""
     r = await get_redis()
@@ -73,6 +74,7 @@ async def invalidate_order(order_id: int) -> None:
 # Order status (lightweight key for quick status lookups)
 # ---------------------------------------------------------------------------
 
+
 async def set_order_status(order_id: int, status: str) -> None:
     """Cache current order status for quick lookup without DB query."""
     r = await get_redis()
@@ -88,6 +90,7 @@ async def get_order_status(order_id: int) -> str | None:
 # ---------------------------------------------------------------------------
 # Pub/Sub  (order status events for other services)
 # ---------------------------------------------------------------------------
+
 
 async def publish_order_event(event: dict) -> int:
     """Publish order status change event.
