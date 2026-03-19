@@ -1,10 +1,13 @@
 """Async SQLAlchemy engine and session factory."""
 
+import os
+
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
-# TODO: Load from config
-DATABASE_URL = "postgresql+asyncpg://user:pass@localhost:5432/orders"
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL", "postgresql+asyncpg://user:pass@localhost:5432/orders"
+)
 
 engine = create_async_engine(
     DATABASE_URL,
