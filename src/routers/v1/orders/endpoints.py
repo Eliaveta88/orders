@@ -6,9 +6,9 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.core import get_async_session
-from src.routers.v1.orders.actions import _get_order_detail, _list_orders
+from src.routers.v1.orders.actions import _create_order, _get_order_detail, _list_orders
 from src.routers.v1.orders.dal import OrderDAL
-from src.routers.v1.orders.schemas import OrderListResponse, OrderResponse
+from src.routers.v1.orders.schemas import CreateOrderRequest, OrderListResponse, OrderResponse
 
 orders_router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -36,6 +36,19 @@ async def list_orders(
     dal: OrderDAL = Depends(get_dal),
 ) -> OrderListResponse:
     return await _list_orders(dal, skip=skip, limit=limit)
+
+
+@orders_router.post(
+    "",
+    response_model=OrderResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Создать заказ",
+)
+async def create_order(
+    body: CreateOrderRequest,
+    dal: OrderDAL = Depends(get_dal),
+) -> OrderResponse:
+    return await _create_order(body, dal)
 
 
 @orders_router.get(
