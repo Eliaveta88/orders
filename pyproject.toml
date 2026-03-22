@@ -5,6 +5,7 @@ description = "GastroRoute orders service"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115.0",
+    "orjson>=3.10.0",
     "pydantic-settings>=2.0.0",
     "sqlalchemy[asyncio]>=2.0.0",
     "asyncpg>=0.30.0",
