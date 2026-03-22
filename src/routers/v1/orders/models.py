@@ -7,13 +7,14 @@ from sqlalchemy import (
     DECIMAL,
     DateTime,
     Float,
+    ForeignKey,
     Integer,
     String,
     func,
 )
-from sqlalchemy.orm import declarative_base, mapped_column
+from sqlalchemy.orm import mapped_column
 
-Base = declarative_base()
+from src.database.core import Base
 
 
 class Order(Base):
@@ -64,10 +65,15 @@ class OrderItem(Base):
     __tablename__ = "order_items"
 
     id: int = mapped_column(Integer, primary_key=True)
-    order_id: int = mapped_column(Integer, nullable=False, index=True)
+    order_id: int = mapped_column(
+        Integer,
+        ForeignKey("orders.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     product_id: int = mapped_column(Integer, nullable=False, index=True)
     product_name: str = mapped_column(String(255), nullable=False)
-    quantity: Float = mapped_column(Float, nullable=False)
+    quantity: float = mapped_column(Float, nullable=False)
     unit_price: Decimal = mapped_column(DECIMAL(15, 2), nullable=False)
     total: Decimal = mapped_column(DECIMAL(15, 2), nullable=False)
     status: str = mapped_column(
@@ -103,7 +109,12 @@ class OrderStatusHistory(Base):
     __tablename__ = "order_status_history"
 
     id: int = mapped_column(Integer, primary_key=True)
-    order_id: int = mapped_column(Integer, nullable=False, index=True)
+    order_id: int = mapped_column(
+        Integer,
+        ForeignKey("orders.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     old_status: str = mapped_column(String(50), nullable=True)
     new_status: str = mapped_column(String(50), nullable=False)
     changed_by: str = mapped_column(String(100), nullable=True)  # user_id or system
