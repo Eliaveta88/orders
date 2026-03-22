@@ -1,7 +1,7 @@
 """OpenTelemetry: OTLP gRPC → Jaeger; связка с Traefik по W3C traceparent.
 
 Отключить экспорт: OTEL_SDK_DISABLED=true
-Локально без Docker: OTEL_SDK_DISABLED=true или OTEL_EXPORTER_OTLP_ENDPOINT=
+Без переменной OTEL_EXPORTER_OTLP_ENDPOINT трейсинг не включается (удобно для локального uv run вне Docker).
 """
 
 from __future__ import annotations
@@ -20,9 +20,11 @@ def setup_fastapi_tracing(app: FastAPI, default_service_name: str) -> None:
     if os.getenv("OTEL_SDK_DISABLED", "").lower() in ("1", "true", "yes"):
         return
     raw = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-    if raw is not None and not str(raw).strip():
+    if raw is None:
         return
-    endpoint = (raw or "jaeger:4317").strip()
+    endpoint = str(raw).strip()
+    if not endpoint:
+        return
     service_name = (os.getenv("OTEL_SERVICE_NAME") or default_service_name).strip() or default_service_name
 
     from opentelemetry import trace
