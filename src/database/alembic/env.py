@@ -9,6 +9,8 @@ from alembic import context
 
 from src.database.core import Base, DATABASE_URL
 
+import src.routers.v1.orders.models  # noqa: F401  # register models on Base.metadata
+
 config = context.config
 config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
