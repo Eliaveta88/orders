@@ -1,5 +1,6 @@
 """HTTP endpoints for orders v1."""
 
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
@@ -33,9 +34,23 @@ async def orders_ping() -> dict[str, str]:
 async def list_orders(
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    created_from: Annotated[
+        datetime | None,
+        Query(description="Нижняя граница created_at (включительно), ISO8601"),
+    ] = None,
+    created_to: Annotated[
+        datetime | None,
+        Query(description="Верхняя граница created_at (не включая), ISO8601"),
+    ] = None,
     dal: OrderDAL = Depends(get_dal),
 ) -> OrderListResponse:
-    return await _list_orders(dal, skip=skip, limit=limit)
+    return await _list_orders(
+        dal,
+        skip=skip,
+        limit=limit,
+        created_from=created_from,
+        created_to=created_to,
+    )
 
 
 @orders_router.post(

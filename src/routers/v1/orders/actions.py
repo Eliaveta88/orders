@@ -1,6 +1,7 @@
 """Business logic actions for orders endpoints."""
 
 import logging
+from datetime import datetime
 
 from fastapi import HTTPException, status
 
@@ -28,10 +29,17 @@ async def _list_orders(
     dal: OrderDAL,
     skip: int = 0,
     limit: int = 50,
+    created_from: datetime | None = None,
+    created_to: datetime | None = None,
 ) -> OrderListResponse:
     """Get orders list."""
-    orders = await dal.list_orders(skip=skip, limit=limit)
-    total = await dal.count_orders()
+    orders = await dal.list_orders(
+        skip=skip,
+        limit=limit,
+        created_from=created_from,
+        created_to=created_to,
+    )
+    total = await dal.count_orders(created_from=created_from, created_to=created_to)
     return OrderListResponse(
         items=[OrderSummaryResponse(**o) for o in orders],
         total=total,

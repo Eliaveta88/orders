@@ -1,5 +1,6 @@
 """Data Access Layer for orders operations."""
 
+from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import select, func, update
@@ -15,16 +16,37 @@ class OrderDAL:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def list_orders(self, skip: int = 0, limit: int = 100) -> list[dict]:
-        """List all orders with pagination."""
-        stmt = select(Order).order_by(Order.created_at.desc()).offset(skip).limit(limit)
+    async def list_orders(
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        *,
+        created_from: datetime | None = None,
+        created_to: datetime | None = None,
+    ) -> list[dict]:
+        """List orders with pagination and optional created_at range (half-open [from, to))."""
+        stmt = select(Order).order_by(Order.created_at.desc())
+        if created_from is not None:
+            stmt = stmt.where(Order.created_at >= created_from)
+        if created_to is not None:
+            stmt = stmt.where(Order.created_at < created_to)
+        stmt = stmt.offset(skip).limit(limit)
         result = await self.session.execute(stmt)
         orders = result.scalars().all()
         return [o.to_dict() | {"id": o.id} for o in orders]
 
-    async def count_orders(self) -> int:
-        """Get total order count."""
+    async def count_orders(
+        self,
+        *,
+        created_from: datetime | None = None,
+        created_to: datetime | None = None,
+    ) -> int:
+        """Count orders, optionally filtered by created_at range (half-open [from, to))."""
         stmt = select(func.count(Order.id))
+        if created_from is not None:
+            stmt = stmt.where(Order.created_at >= created_from)
+        if created_to is not None:
+            stmt = stmt.where(Order.created_at < created_to)
         result = await self.session.execute(stmt)
         return result.scalar() or 0
 
