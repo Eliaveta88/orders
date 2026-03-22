@@ -44,7 +44,7 @@ class App:
             middleware_class=CORSMiddleware,
             allow_origins=["*"],
             allow_credentials=True,
-            allow_methods=["GET", "POST", "DELETE", "PATCH", "PUT"],
+            allow_methods=["GET", "POST", "DELETE", "PATCH", "PUT", "OPTIONS"],
             allow_headers=["*"],
         )
         self._app.add_middleware(
