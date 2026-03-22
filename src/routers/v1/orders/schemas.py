@@ -16,6 +16,21 @@ class OrderItem(BaseModel):
     total: float = Field(..., ge=0, description="Total (qty * price)")
 
 
+class OrderSummaryResponse(BaseModel):
+    """Краткая карточка заказа для списка (без позиций)."""
+
+    id: int = Field(..., description="Order ID")
+    client_id: int = Field(..., description="Client ID")
+    client_name: str = Field(..., description="Client name")
+    total_amount: float = Field(..., ge=0, description="Total order amount")
+    status: str = Field(
+        ..., description="Order status: draft, confirmed, in_delivery, closed, cancelled"
+    )
+    delivery_date: datetime = Field(..., description="Delivery date")
+    route_id: Optional[int] = Field(None, description="Assigned route ID")
+    created_at: datetime = Field(..., description="Creation timestamp")
+
+
 class OrderResponse(BaseModel):
     """Order response."""
 
@@ -35,7 +50,7 @@ class OrderResponse(BaseModel):
 class OrderListResponse(BaseModel):
     """Paginated list of orders."""
 
-    items: List[OrderResponse]
+    items: List[OrderSummaryResponse]
     total: int = Field(..., ge=0, description="Total orders count")
     skip: int = Field(..., ge=0, description="Pagination offset")
     limit: int = Field(..., ge=1, le=100, description="Pagination limit")

@@ -8,6 +8,7 @@ from src.routers.v1.orders.dal import OrderDAL
 from src.routers.v1.orders.schemas import (
     OrderListResponse,
     OrderResponse,
+    OrderSummaryResponse,
     CreateOrderRequest,
     UpdateOrderStatusRequest,
 )
@@ -32,7 +33,7 @@ async def _list_orders(
     orders = await dal.list_orders(skip=skip, limit=limit)
     total = await dal.count_orders()
     return OrderListResponse(
-        items=[OrderResponse(**o) for o in orders],
+        items=[OrderSummaryResponse(**o) for o in orders],
         total=total,
         skip=skip,
         limit=limit,
