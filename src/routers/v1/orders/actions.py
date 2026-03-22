@@ -2,10 +2,14 @@
 
 import logging
 from datetime import datetime
+from decimal import Decimal
 
+import httpx
 from fastapi import HTTPException, status
 
 from src.routers.v1.orders.dal import OrderDAL
+from src.services.catalog_client import fetch_product
+from src.services.identity_client import fetch_user_display_name
 from src.routers.v1.orders.schemas import (
     OrderListResponse,
     OrderResponse,
@@ -80,8 +84,39 @@ async def _create_order(
     order_in: CreateOrderRequest,
     dal: OrderDAL,
 ) -> OrderResponse:
-    """Create new order."""
-    order = await dal.create(order_in)
+    """Create new order (resolve catalog prices/names and identity client label)."""
+    resolved_lines: list[tuple[Decimal, str]] = []
+    for item in order_in.items:
+        try:
+            product = await fetch_product(item.product_id)
+        except httpx.HTTPError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Catalog service unavailable: {exc}",
+            ) from exc
+        if not product:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Product {item.product_id} not found in catalog",
+            )
+        unit_price = Decimal(str(product["price"]))
+        product_name = str(product["name"])
+        resolved_lines.append((unit_price, product_name))
+
+    try:
+        client_label = await fetch_user_display_name(order_in.client_id)
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Identity service unavailable: {exc}",
+        ) from exc
+    client_name = client_label or f"Client #{order_in.client_id}"
+
+    order = await dal.create(
+        order_in,
+        resolved_lines=resolved_lines,
+        client_name=client_name,
+    )
     order_id = order.get("id")
     order_status = order.get("status")
 

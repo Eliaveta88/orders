@@ -86,23 +86,28 @@ class OrderDAL:
             "created_at": order.created_at,
         }
 
-    async def create(self, order_in: CreateOrderRequest) -> dict:
-        """Create new order."""
-        # 1. Calculate total amount
+    async def create(
+        self,
+        order_in: CreateOrderRequest,
+        *,
+        resolved_lines: list[tuple[Decimal, str]],
+        client_name: str,
+    ) -> dict:
+        """Create new order (prices and product names resolved by actions via catalog/identity)."""
+        if len(resolved_lines) != len(order_in.items):
+            raise ValueError("resolved_lines must match order_in.items length")
+
         total_amount = Decimal("0")
         items_data = []
 
-        for item in order_in.items:
-            # TODO: Fetch product price from catalog service
-            unit_price = Decimal("100")  # Mock price
+        for item, (unit_price, product_name) in zip(order_in.items, resolved_lines, strict=True):
             item_total = Decimal(item.quantity) * unit_price
             total_amount += item_total
-            items_data.append((item, unit_price, item_total))
+            items_data.append((item, unit_price, item_total, product_name))
 
-        # 2. Create Order record
         order = Order(
             client_id=order_in.client_id,
-            client_name="Client Name",  # TODO: Fetch from clients
+            client_name=client_name,
             total_amount=total_amount,
             status="draft",
             delivery_date=order_in.delivery_date,
@@ -112,11 +117,11 @@ class OrderDAL:
         await self.session.flush()
 
         # 3. Create OrderItem records for each item
-        for item_req, unit_price, item_total in items_data:
+        for item_req, unit_price, item_total, product_name in items_data:
             order_item = OrderItem(
                 order_id=order.id,
                 product_id=item_req.product_id,
-                product_name="Product Name",  # TODO: Fetch from catalog
+                product_name=product_name,
                 quantity=item_req.quantity,
                 unit_price=unit_price,
                 total=item_total,
@@ -133,13 +138,13 @@ class OrderDAL:
             "client_name": order.client_name,
             "items": [
                 {
-                    "product_id": item.product_id,
-                    "product_name": item.product_name,
-                    "quantity": item.quantity,
+                    "product_id": item_req.product_id,
+                    "product_name": product_name,
+                    "quantity": item_req.quantity,
                     "unit_price": float(unit_price),
                     "total": float(item_total),
                 }
-                for item, unit_price, item_total in items_data
+                for item_req, unit_price, item_total, product_name in items_data
             ],
             "total_amount": float(total_amount),
             "status": "draft",
