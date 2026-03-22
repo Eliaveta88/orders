@@ -10,6 +10,7 @@ from src.cors import cors_allow_credentials, cors_allow_origins
 from src.middleware import db_session_middleware, request_logging_middleware
 from src.routers import Router
 from src.services.redis import close_redis, get_redis
+from src.telemetry import setup_fastapi_tracing
 
 logging.basicConfig(
     level=logging.INFO,
@@ -58,6 +59,7 @@ class App:
         )
 
         self._register_routers()
+        setup_fastapi_tracing(self._app, "gastroroute-orders")
 
     def _register_routers(self) -> None:
         for router, prefix, tags in Router.routers:
