@@ -6,6 +6,7 @@ from fastapi.responses import ORJSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 
+from src.cors import cors_allow_credentials, cors_allow_origins
 from src.middleware import db_session_middleware, request_logging_middleware
 from src.routers import Router
 from src.services.redis import close_redis, get_redis
@@ -42,8 +43,8 @@ class App:
         )
         self._app.add_middleware(
             middleware_class=CORSMiddleware,
-            allow_origins=["*"],
-            allow_credentials=True,
+            allow_origins=cors_allow_origins(),
+            allow_credentials=cors_allow_credentials(),
             allow_methods=["GET", "POST", "DELETE", "PATCH", "PUT", "OPTIONS"],
             allow_headers=["*"],
         )
