@@ -6,7 +6,7 @@ from fastapi.responses import ORJSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 
-from src.middleware import db_session_middleware
+from src.middleware import db_session_middleware, request_logging_middleware
 from src.routers import Router
 from src.services.redis import close_redis, get_redis
 
@@ -50,6 +50,10 @@ class App:
         self._app.add_middleware(
             middleware_class=BaseHTTPMiddleware,
             dispatch=db_session_middleware,
+        )
+        self._app.add_middleware(
+            middleware_class=BaseHTTPMiddleware,
+            dispatch=request_logging_middleware,
         )
 
         self._register_routers()
