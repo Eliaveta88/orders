@@ -1,7 +1,7 @@
 """Orders schemas and models."""
 
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -75,4 +75,6 @@ class CreateOrderRequest(BaseModel):
 class UpdateOrderStatusRequest(BaseModel):
     """Request to update order status."""
 
-    status: str = Field(..., description="New status: confirmed, in_delivery, closed, cancelled")
+    status: Literal["confirmed", "in_delivery", "closed", "cancelled"] = Field(
+        ..., description="New status"
+    )

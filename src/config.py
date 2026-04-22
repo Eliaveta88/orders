@@ -40,10 +40,12 @@ class PostgresCfg(CfgBase):
 
 @dataclass
 class IntegrationCfg(CfgBase):
-    """HTTP integration with catalog and identity (same Docker network or Traefik)."""
+    """HTTP integration with catalog, identity, warehouse and logistics (Docker network or Traefik)."""
 
     catalog_base_url: str = os.getenv("CATALOG_BASE_URL", "http://localhost").rstrip("/")
     identity_base_url: str = os.getenv("IDENTITY_BASE_URL", "http://localhost").rstrip("/")
+    warehouse_base_url: str = os.getenv("WAREHOUSE_BASE_URL", "http://localhost").rstrip("/")
+    logistics_base_url: str = os.getenv("LOGISTICS_BASE_URL", "http://localhost").rstrip("/")
     http_timeout_seconds: float = float(os.getenv("INTEGRATION_HTTP_TIMEOUT", "5"))
 
 

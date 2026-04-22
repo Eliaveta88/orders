@@ -3,13 +3,23 @@
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Path, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.core import get_async_session
-from src.routers.v1.orders.actions import _create_order, _get_order_detail, _list_orders
+from src.routers.v1.orders.actions import (
+    _create_order,
+    _get_order_detail,
+    _list_orders,
+    _update_order_status,
+)
 from src.routers.v1.orders.dal import OrderDAL
-from src.routers.v1.orders.schemas import CreateOrderRequest, OrderListResponse, OrderResponse
+from src.routers.v1.orders.schemas import (
+    CreateOrderRequest,
+    OrderListResponse,
+    OrderResponse,
+    UpdateOrderStatusRequest,
+)
 
 orders_router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -77,3 +87,22 @@ async def get_order(
     dal: OrderDAL = Depends(get_dal),
 ) -> OrderResponse:
     return await _get_order_detail(order_id, dal)
+
+
+@orders_router.patch(
+    "/{order_id}/status",
+    response_model=OrderResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Обновить статус заказа",
+    description=(
+        "Переводит заказ в новый статус. При переходе в `confirmed` сервис заказов "
+        "резервирует товары в warehouse (`/stock/reserve`). При переходе в `cancelled` "
+        "ранее сделанные резервы освобождаются."
+    ),
+)
+async def update_order_status(
+    body: UpdateOrderStatusRequest,
+    order_id: Annotated[int, Path(gt=0)],
+    dal: OrderDAL = Depends(get_dal),
+) -> OrderResponse:
+    return await _update_order_status(order_id, body, dal)

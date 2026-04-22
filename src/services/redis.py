@@ -11,10 +11,12 @@ from src.config import redis_cfg
 _KEY_PREFIX = "orders"
 _ORDER_CACHE = f"{_KEY_PREFIX}:order:"
 _ORDER_STATUS = f"{_KEY_PREFIX}:status:"
+_ORDER_RESERVATIONS = f"{_KEY_PREFIX}:reservations:"
 _CHANNEL_ORDER = f"{_KEY_PREFIX}:events:status"
 
 _ORDER_CACHE_TTL = 300  # 5 min
 _STATUS_CACHE_TTL = 120  # 2 min
+_RESERVATIONS_TTL = 7 * 24 * 3600  # 7 days — long enough for a typical order lifecycle
 
 _pool: aioredis.Redis | None = None
 
@@ -86,6 +88,40 @@ async def get_order_status(order_id: int) -> str | None:
     """Return cached status string or None."""
     r = await get_redis()
     return await r.get(f"{_ORDER_STATUS}{order_id}")
+
+
+# ---------------------------------------------------------------------------
+# Warehouse reservation tracking per order (for release-on-cancel compensation)
+# ---------------------------------------------------------------------------
+
+
+async def store_order_reservations(order_id: int, reservation_ids: list[int]) -> None:
+    """Persist the list of warehouse reservation ids attached to an order."""
+    r = await get_redis()
+    await r.set(
+        f"{_ORDER_RESERVATIONS}{order_id}",
+        json.dumps(reservation_ids),
+        ex=_RESERVATIONS_TTL,
+    )
+
+
+async def get_order_reservations(order_id: int) -> list[int]:
+    """Return reservation ids previously stored for an order (empty list if none)."""
+    r = await get_redis()
+    raw = await r.get(f"{_ORDER_RESERVATIONS}{order_id}")
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw)
+    except (ValueError, TypeError):
+        return []
+    return [int(x) for x in data if isinstance(x, int)]
+
+
+async def clear_order_reservations(order_id: int) -> None:
+    """Drop reservation tracking after they have been released."""
+    r = await get_redis()
+    await r.delete(f"{_ORDER_RESERVATIONS}{order_id}")
 
 
 # ---------------------------------------------------------------------------
